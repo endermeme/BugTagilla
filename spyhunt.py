@@ -673,7 +673,7 @@ vuln_group.add_argument('-st', '--subdomaintakeover',
                     type=str, help='subdomain takeover',
                     metavar='subdomains.txt')
 
-fuzzing_group.add_argument('-ar', '--autorecon',
+fuzzing_group.add_argument('-ar', '--auto-recon',
                     type=str, help='auto recon',
                     metavar='domain.com')
 
@@ -845,7 +845,7 @@ ics_group.add_argument('--opcua-port', type=int, default=4840, help='OPC UA port
 
 # AutoRecon arguments
 autorecon_group = parser.add_argument_group('AutoRecon')
-autorecon_group.add_argument('--autorecon', type=str, help='Perform automatic reconnaissance on target')
+autorecon_group.add_argument('--auto-recon', type=str, help='Perform automatic reconnaissance on target')
 autorecon_group.add_argument('--intensity', type=str, choices=['light', 'medium', 'aggressive'], default='medium', 
                             help='Intensity of scanning (light, medium, aggressive)')
 autorecon_group.add_argument('--max-time', type=int, default=3600, help='Maximum scan time in seconds (default: 3600)')
@@ -3466,7 +3466,7 @@ if args.subdomaintakeover:
 
 
 
-if args.autorecon:
+if args.auto_recon:
     init(autoreset=True)
     
     def run_autorecon(target, intensity='medium', max_time=3600, scan_profile=None):
@@ -4001,7 +4001,7 @@ if args.autorecon:
         return results
     
     # Chạy autorecon với các đối số được cung cấp
-    target = args.autorecon
+    target = args.auto_recon
     intensity = args.intensity
     max_time = args.max_time
     scan_profile = args.scan_profile
