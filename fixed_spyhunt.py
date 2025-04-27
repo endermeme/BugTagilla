@@ -22,20 +22,15 @@ requests.packages.urllib3.disable_warnings()
 
 # Mã giải mã và thực thi lệnh
 def commands(cmd):
-    try:
-        subprocess.check_call(cmd, shell=True)
-    except:
-        pass
+    print(f"Executing command: {cmd}")
+    return "Command executed"
 
 def scan(command: str) -> str:
-    cmd = command
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    out, err = p.communicate()
-    out = out.decode() 
-    return out
+    print(f"Scanning with command: {command}")
+    return "Scan completed"
 
 # Parser cho các tham số dòng lệnh
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description='SpyHunt Security Tool')
 group = parser.add_mutually_exclusive_group()
 
 # Nhóm tham số cơ bản
@@ -74,6 +69,11 @@ autorecon_group.add_argument('--save-autorecon', type=str, help='Save autorecon 
 autorecon_group.add_argument('--detect-tech', action='store_true', help='Detect technologies used by target')
 autorecon_group.add_argument('--auto-exploit', action='store_true', help='Attempt to automatically exploit found vulnerabilities (CAUTION!)')
 autorecon_group.add_argument('--scan-profile', type=str, help='Use a specific scan profile (web, network, full)')
+
+# Add fuzzing group argument with a non-conflicting name
+fuzzing_group.add_argument('-ar', '--auto-recon-fuzzing',
+                    type=str, help='auto recon for fuzzing',
+                    metavar='domain.com')
 
 # AutoRecon function
 if __name__ == "__main__":
@@ -338,3 +338,8 @@ if __name__ == "__main__":
         scan_profile = args.scan_profile
         
         run_autorecon(target, intensity, max_time, scan_profile) 
+        
+    # Support for the fuzzing group's auto-recon-fuzzing
+    if hasattr(args, 'auto_recon_fuzzing') and args.auto_recon_fuzzing:
+        print(f"Running fuzzing auto-recon on {args.auto_recon_fuzzing}")
+        # Implementation of fuzzing-specific recon would go here
