@@ -123,3 +123,60 @@ SpyHunt là một công cụ mạnh mẽ được thiết kế cho các mục đ
 ## Giấy phép
 
 Dự án này được phát hành theo giấy phép MIT. Xem file [LICENSE](LICENSE) để biết thêm chi tiết.
+
+# SpyHunt AI Bug Bounty Scanner
+
+A simplified security scanner with AI-powered bug bounty analysis.
+
+## Setup
+
+1. Install required dependencies:
+   ```
+   pip install requests colorama python-dotenv openai
+   ```
+
+2. Set up your OpenAI API key:
+   - Edit the `run_bug_bounty.bat` file and replace `YOUR_API_KEY_HERE` with your actual OpenAI API key
+   - OR set the `OPENAI_API_KEY` environment variable
+   - OR create a `.env` file with: `OPENAI_API_KEY=your_key_here`
+
+## Usage
+
+### Using the batch file:
+
+```
+run_bug_bounty.bat example.com --output-format detailed
+```
+
+### Running directly with Python:
+
+```
+python spyhunt_simplified.py example.com --output-format detailed
+```
+
+### Available options:
+
+- `--output-dir`: Directory to save output files (default: current directory)
+- `--max-threads`: Maximum number of threads to use (default: 10)
+- `--ai-model`: AI model to use (default: gpt-4o-mini)
+- `--output-format`: Output format (simple, detailed, json)
+- `--focus`: Focus area for AI analysis (api, web, mobile, infra, all)
+- `--api-key`: OpenAI API key (if not set in .env or environment)
+
+## Example
+
+```
+python spyhunt_simplified.py target-domain.com --output-format detailed --focus web
+```
+
+This will:
+1. Run a basic security scan on target-domain.com
+2. Save the findings to a JSON file
+3. Send the findings to the OpenAI API for AI-powered bug bounty analysis
+4. Generate a detailed report of potential security issues
+
+## Files
+
+- `spyhunt_simplified.py`: The main script that runs the scan and AI analysis
+- `ai_support_functions.py`: Contains functions for AI analysis
+- `run_bug_bounty.bat`: Helper batch script for Windows users

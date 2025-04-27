@@ -87,9 +87,36 @@ class AISupportFunctions:
         
         # Check if we have real findings data
         if findings_data is None:
-            print(f"{Fore.YELLOW}[!] No findings data provided. Running AI analysis based on domain only.{Style.RESET_ALL}")
-            # This would be the place to run a scan, but we'll return a message since we should get data
-            return {"error": "No findings data provided. Please run a scan first."}
+            print(f"{Fore.YELLOW}[!] No findings data provided. Running scan first...{Style.RESET_ALL}")
+            
+            try:
+                # Import here to avoid circular imports
+                from spyhunt import run_comprehensive_scan
+                import os
+                import json
+                
+                # Run comprehensive scan to gather data
+                print(f"{Fore.CYAN}[+] Starting comprehensive scan for bug bounty analysis on {target}{Style.RESET_ALL}")
+                
+                # Run the scan
+                findings_file = run_comprehensive_scan(
+                    target=target,
+                    output_dir=".",
+                    max_threads=max_threads,
+                    ai_model=ai_model,
+                    auto_explore=True
+                )
+                
+                # Load the findings data
+                if findings_file and os.path.exists(findings_file):
+                    with open(findings_file, 'r') as f:
+                        findings_data = json.load(f)
+                    print(f"{Fore.GREEN}[+] Scan completed successfully. Analyzing results...{Style.RESET_ALL}")
+                else:
+                    return {"error": "Scan failed to produce valid results. Please check for errors."}
+            except Exception as e:
+                print(f"{Fore.RED}[!] Error during scan: {str(e)}{Style.RESET_ALL}")
+                return {"error": f"Error while running scan: {str(e)}"}
         
         # Run AI analysis on the real findings data
         results = self.analyze_with_ai(target, findings_data, focus, ai_model)

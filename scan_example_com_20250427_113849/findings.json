@@ -1,0 +1,29 @@
+{
+    "target": "example.com",
+    "scan_time": "2025-04-27 11:38:49",
+    "subdomains": [],
+    "port_scan": {},
+    "site_links": [],
+    "parameters": [],
+    "js_files": [],
+    "vulnerabilities": [],
+    "host_info": "Server:  vnpt.vn\nAddress:  2001:ee0:23::23\n\nName:    example.com\nAddresses:  2600:1406:3a00:21::173e:2e65\n\t  2600:1406:3a00:21::173e:2e66\n\t  2600:1406:bc00:53::b81e:94c8\n\t  2600:1406:bc00:53::b81e:94ce\n\t  2600:1408:ec00:36::1736:7f24\n\t  2600:1408:ec00:36::1736:7f31\n\t  23.192.228.80\n\t  23.192.228.84\n\t  23.215.0.136\n\t  23.215.0.138\n\t  96.7.128.175\n\t  96.7.128.198\n\n",
+    "web_info": {
+        "status_code": 200,
+        "headers": {
+            "Accept-Ranges": "bytes",
+            "Content-Type": "text/html",
+            "ETag": "\"84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134\"",
+            "Last-Modified": "Mon, 13 Jan 2025 20:11:20 GMT",
+            "Vary": "Accept-Encoding",
+            "Content-Encoding": "gzip",
+            "Cache-Control": "max-age=2151",
+            "Date": "Sun, 27 Apr 2025 04:38:38 GMT",
+            "Alt-Svc": "h3=\":443\"; ma=93600,h3-29=\":443\"; ma=93600,quic=\":443\"; ma=93600; v=\"43\"",
+            "Content-Length": "648",
+            "Connection": "keep-alive"
+        },
+        "content_length": 1256
+    },
+    "directory_checks": []
+}
