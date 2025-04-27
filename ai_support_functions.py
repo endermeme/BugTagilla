@@ -5,6 +5,15 @@ import sys
 import random
 from colorama import Fore, Style, init
 
+# Add dotenv import and load
+try:
+    from dotenv import load_dotenv
+    # Load environment variables from .env file
+    load_dotenv()
+except ImportError:
+    print(f"dotenv package not installed. Environment variables from .env file will not be loaded.")
+    print(f"Install with: pip install python-dotenv")
+
 class AISupportFunctions:
     def __init__(self, api_key=None):
         """Initialize the AI support functions with an optional API key."""

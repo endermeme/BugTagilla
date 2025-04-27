@@ -1514,3 +1514,39 @@ if args.hostheaderinjection:
 
         with ThreadPoolExecutor(max_workers=10) as executor:
             executor.map(check_host_header_injection, domains)
+
+# Load Shodan API key from .env if not provided via command line
+if args.shodan_api is None:
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        # Try to get Shodan API key from environment variable
+        shodan_api_from_env = os.environ.get("SHODAN_API_KEY")
+        if shodan_api_from_env and shodan_api_from_env != "your_shodan_api_key_here":
+            args.shodan_api = shodan_api_from_env
+            print(f"{Fore.GREEN}Loaded Shodan API key from environment variable{Style.RESET_ALL}")
+    except ImportError:
+        pass
+
+# Add handling for AI bug bounty argument
+if args.ai_bug_bounty:
+    try:
+        # Try to load dotenv in case it's not loaded yet
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+        except ImportError:
+            pass
+            
+        # Initialize AI support functions
+        ai_support = AISupportFunctions(api_key=args.api_key)
+        # Run the bug bounty analysis
+        ai_support.run_ai_bug_bounty(
+            target=args.ai_bug_bounty,
+            focus=args.focus,
+            max_threads=args.max_threads,
+            output_format=args.output_report,
+            ai_model=args.ai_model
+        )
+    except Exception as e:
+        print(f"{Fore.RED}Error during AI bug bounty analysis: {str(e)}{Style.RESET_ALL}")
