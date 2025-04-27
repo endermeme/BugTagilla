@@ -420,29 +420,34 @@ class AISecurityManager:
         return workflow
     
     def save_analysis(self, filename="ai_bug_bounty_analysis.md"):
-        """Lưu toàn bộ phân tích vào file"""
-        import datetime
+        """Lưu phân tích vào một file markdown"""
+        if not self.recommendations:
+            print(f"{Fore.RED}[!] No analysis results to save{Style.RESET_ALL}")
+            return False
         
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(f"# AI Bug Bounty Analysis\n\n")
-            f.write(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        with open(filename, "w") as f:
+            f.write("# AI-Powered Bug Bounty Analysis\n\n")
             
             if "current" in self.recommendations:
                 f.write("## Current Analysis\n\n")
-                f.write(self.recommendations["current"])
-                f.write("\n\n")
-                
+                f.write("```json\n")
+                f.write(json.dumps(self.recommendations["current"], indent=2))
+                f.write("\n```\n\n")
+            
             if "commands" in self.recommendations:
-                f.write("## Recommended Commands\n\n")
-                f.write(self.recommendations["commands"])
-                f.write("\n\n")
-                
+                f.write("## Suggested Commands\n\n")
+                for cmd in self.recommendations["commands"]:
+                    f.write(f"- `{cmd}`\n")
+                f.write("\n")
+            
             if "workflow" in self.recommendations:
                 f.write("## Recon Workflow\n\n")
-                f.write(self.recommendations["workflow"])
-                f.write("\n\n")
+                f.write("```json\n")
+                f.write(json.dumps(self.recommendations["workflow"], indent=2))
+                f.write("\n```\n\n")
         
-        print(f"{Fore.GREEN}Đã lưu phân tích AI vào {filename}{Style.RESET_ALL}")
+        print(f"{Fore.GREEN}[+] Analysis saved to {filename}{Style.RESET_ALL}")
+        return True
 
 # Khởi tạo một instance toàn cục
 ai_security_manager = AISecurityManager()
@@ -2096,238 +2101,167 @@ class AISecurityScan:
             scan_duration = time.time() - scan_start_time
             print(f"{Fore.GREEN}[+] Scan completed in {scan_duration:.2f} seconds{Style.RESET_ALL}")
             
-            # Step 2: Load and organize the scan data
-            print(f"\n{Fore.CYAN}[+] Step 2: Loading and organizing scan data{Style.RESET_ALL}")
-            if scan_file and os.path.exists(scan_file):
+            # Step 2: Analyze scan results with AI
+            print(f"\n{Fore.CYAN}[+] Step 2: Analyzing scan results with AI{Style.RESET_ALL}")
+            analysis_start_time = time.time()
+            
+            # Load scan results
+            try:
                 with open(scan_file, 'r') as f:
                     scan_data = json.load(f)
-                print(f"{Fore.GREEN}[+] Successfully loaded scan data from {scan_file}{Style.RESET_ALL}")
                 
-                # Organize reconnaissance data
-                self.findings["reconnaissance"] = {
-                    "subdomains": scan_data.get("subdomains", []),
-                    "port_scan": scan_data.get("port_scan", {}),
-                    "web_info": {
-                        "site_links": scan_data.get("site_links", []),
-                        "parameters": scan_data.get("parameters", []),
-                        "js_files": scan_data.get("js_files", [])
-                    },
-                    "security_checks": {
-                        "cors_checks": scan_data.get("cors_checks", []),
-                        "host_header_checks": scan_data.get("host_header_checks", [])
-                    }
-                }
+                # Perform AI analysis
+                analysis_results = self.analyze_with_ai(scan_data, target, focus_area)
                 
-                # Print summary of reconnaissance data
-                subdomain_count = len(self.findings["reconnaissance"]["subdomains"])
-                port_scan_count = sum(len(ports) for host, ports in self.findings["reconnaissance"]["port_scan"].items())
-                site_links_count = len(self.findings["reconnaissance"]["web_info"]["site_links"])
-                
-                print(f"{Fore.CYAN}[+] Reconnaissance Data Summary:{Style.RESET_ALL}")
-                print(f"{Fore.CYAN}    - Subdomains: {subdomain_count}{Style.RESET_ALL}")
-                print(f"{Fore.CYAN}    - Open Ports: {port_scan_count}{Style.RESET_ALL}")
-                print(f"{Fore.CYAN}    - Web Links: {site_links_count}{Style.RESET_ALL}")
-                
-                # Step 3: Perform AI Analysis
-                print(f"\n{Fore.CYAN}[+] Step 3: Performing AI analysis on scan data{Style.RESET_ALL}")
-                analysis_result = self.analyze_with_ai(scan_data, target, focus_area)
-                
-                if analysis_result:
-                    print(f"{Fore.GREEN}[+] AI analysis completed successfully{Style.RESET_ALL}")
+                if analysis_results:
+                    # Update findings with AI analysis
+                    self.findings["reconnaissance"] = scan_data
+                    self.findings["vulnerabilities"] = analysis_results.get("vulnerabilities", [])
+                    self.findings["attack_vectors"] = analysis_results.get("attack_vectors", [])
+                    self.findings["recommendations"] = analysis_results.get("recommendations", [])
                     
-                    # Generate and save the report
-                    print(f"\n{Fore.CYAN}[+] Step 4: Generating final report{Style.RESET_ALL}")
+                    # Generate report
                     report_file = self.generate_report(output_dir, target)
                     
-                    if report_file:
-                        print(f"{Fore.GREEN}[+] Full report saved to: {report_file}{Style.RESET_ALL}")
+                    analysis_duration = time.time() - analysis_start_time
+                    print(f"{Fore.GREEN}[+] AI analysis completed in {analysis_duration:.2f} seconds{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}[+] Report generated at {report_file}{Style.RESET_ALL}")
                     
-                    # Return the complete findings
                     return self.findings
                 else:
-                    print(f"{Fore.RED}[!] AI analysis failed. See errors above.{Style.RESET_ALL}")
+                    print(f"{Fore.RED}[!] AI analysis failed{Style.RESET_ALL}")
                     return None
-                
-            else:
-                print(f"{Fore.RED}[!] Scan file not found or invalid: {scan_file}{Style.RESET_ALL}")
+            except Exception as e:
+                print(f"{Fore.RED}[!] Error analyzing scan results: {str(e)}{Style.RESET_ALL}")
+                traceback.print_exc()
                 return None
-            
         except Exception as e:
-            print(f"{Fore.RED}[!] Error during scanning: {str(e)}{Style.RESET_ALL}")
+            print(f"{Fore.RED}[!] Error during security scan: {str(e)}{Style.RESET_ALL}")
+            traceback.print_exc()
             return None
     
     def analyze_with_ai(self, scan_data, target, focus_area="all"):
         """
-        Analyze scan data with AI to identify security issues
+        Analyze scan results with AI
         
         Args:
-            scan_data: Dictionary with scan results
-            target: Target domain that was scanned
-            focus_area: Focus area for AI analysis (api, web, mobile, infra, all)
+            scan_data: Scan results dictionary
+            target: Target domain
+            focus_area: Focus area for analysis
             
         Returns:
-            Boolean indicating success or failure
+            Dictionary with AI analysis results
         """
         if not self.client:
             print(f"{Fore.RED}[!] OpenAI API not initialized. Cannot perform AI analysis.{Style.RESET_ALL}")
-            return False
+            return None
         
-        print(f"{Fore.CYAN}[+] Preparing data for AI analysis{Style.RESET_ALL}")
-        
-        # Prepare the AI prompt based on scan data and focus area
-        prompt = self._build_analysis_prompt(scan_data, target, focus_area)
-        
-        print(f"{Fore.CYAN}[+] Sending data to {self.model} for analysis{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}[+] Analyzing with focus on {focus_area} security aspects{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}[+] Starting AI analysis of scan results for {target}{Style.RESET_ALL}")
         
         try:
-            # Make the API call with progress indication
-            print(f"{Fore.YELLOW}[*] AI analysis in progress...{Style.RESET_ALL}")
+            # Build the prompt for analysis
+            prompt = self._build_analysis_prompt(scan_data, target, focus_area)
             
+            # Call the OpenAI API
+            print(f"{Fore.CYAN}[+] Calling OpenAI API with model {self.model}{Style.RESET_ALL}")
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are an expert security researcher specializing in bug bounty hunting and vulnerability assessment. Your task is to analyze security reconnaissance data and identify high-value vulnerabilities."},
+                    {"role": "system", "content": "You are an expert security researcher specializing in bug bounty hunting and vulnerability analysis. Your task is to analyze security scan results and provide actionable insights."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3,
+                temperature=0.1,
                 max_tokens=4000
             )
             
-            # Process the AI response
-            ai_analysis = response.choices[0].message.content
+            # Extract the response text
+            response_text = response.choices[0].message.content
             
-            print(f"{Fore.GREEN}[+] AI analysis received, processing results{Style.RESET_ALL}")
+            # Parse the AI output
+            analysis_results = self._parse_ai_output(response_text)
             
-            # Parse the AI output into structured data
-            self._parse_ai_output(ai_analysis)
-            
-            return True
-            
+            return analysis_results
         except Exception as e:
             print(f"{Fore.RED}[!] Error during AI analysis: {str(e)}{Style.RESET_ALL}")
-            return False
+            return None
     
     def _build_analysis_prompt(self, scan_data, target, focus_area):
         """
-        Build a targeted prompt for AI analysis based on scan data and focus area
+        Build the prompt for AI analysis
         
         Args:
-            scan_data: Dictionary with scan results
-            target: Target domain that was scanned
-            focus_area: Focus area for AI analysis (api, web, mobile, infra, all)
+            scan_data: Scan results dictionary
+            target: Target domain
+            focus_area: Focus area for analysis
             
         Returns:
             Prompt string for AI analysis
         """
-        # Create a structured prompt with clear sections
-        prompt = f"""# Security Analysis for Bug Bounty - {target}
-
-## Target Information
-- Domain: {target}
-- Scan Time: {time.strftime("%Y-%m-%d %H:%M:%S")}
-- Focus Area: {focus_area}
-
-## Reconnaissance Data Summary
-"""
+        # Create a summary of findings to avoid token limits
+        summary = {
+            "target": target,
+            "scan_time": scan_data.get("scan_time", ""),
+            "subdomains_count": len(scan_data.get("subdomains", [])),
+            "vulnerabilities_count": len(scan_data.get("vulnerabilities", [])),
+            "parameters_count": len(scan_data.get("parameters", [])),
+            "site_links_count": len(scan_data.get("site_links", [])),
+            "js_files_count": len(scan_data.get("js_files", [])),
+        }
         
-        # Add subdomain information 
-        if "subdomains" in scan_data and scan_data["subdomains"]:
-            prompt += f"\n### Subdomains ({len(scan_data['subdomains'])} found)\n"
-            for subdomain in scan_data["subdomains"][:20]:  # Limit to 20 to conserve tokens
-                prompt += f"- {subdomain}\n"
-            if len(scan_data["subdomains"]) > 20:
-                prompt += f"- ... and {len(scan_data['subdomains']) - 20} more subdomains\n"
+        # Include up to 50 subdomains to keep the prompt size reasonable
+        if len(scan_data.get("subdomains", [])) > 0:
+            summary["subdomains_sample"] = scan_data.get("subdomains", [])[:50]
         
-        # Add port scan information
-        if "port_scan" in scan_data and scan_data["port_scan"]:
-            prompt += f"\n### Port Scan Results\n"
-            for host, ports in list(scan_data["port_scan"].items())[:5]:  # Limit to 5 hosts
-                prompt += f"**{host}**:\n"
-                for port_info in ports[:10]:  # Limit to 10 ports per host
-                    prompt += f"- {port_info}\n"
+        # Include all vulnerabilities since they're the most important
+        if len(scan_data.get("vulnerabilities", [])) > 0:
+            summary["vulnerabilities"] = scan_data.get("vulnerabilities", [])
         
-        # Add web information based on focus area
-        if focus_area in ["web", "all"]:
-            if "site_links" in scan_data and scan_data["site_links"]:
-                prompt += f"\n### Web Endpoints ({len(scan_data['site_links'])} found)\n"
-                # Find interesting endpoints
-                interesting_patterns = ["/api", "/admin", "/login", "/auth", "/upload", "/user", "/account", "/config", "/setting"]
-                interesting_endpoints = []
-                
-                for link in scan_data["site_links"]:
-                    for pattern in interesting_patterns:
-                        if pattern in link:
-                            interesting_endpoints.append(link)
-                            break
-                
-                # Show interesting endpoints first, then some others
-                for endpoint in interesting_endpoints[:15]:
-                    prompt += f"- {endpoint}\n"
-                
-                if len(scan_data["site_links"]) > len(interesting_endpoints):
-                    prompt += f"- ... and {len(scan_data['site_links']) - len(interesting_endpoints)} more endpoints\n"
+        # Include up to 50 parameters
+        if len(scan_data.get("parameters", [])) > 0:
+            summary["parameters_sample"] = scan_data.get("parameters", [])[:50]
         
-        # Add parameters information
-        if "parameters" in scan_data and scan_data["parameters"]:
-            prompt += f"\n### URL Parameters ({len(scan_data['parameters'])} found)\n"
-            # Look for interesting parameters
-            interesting_params = ["id", "user", "file", "path", "redirect", "url", "token", "key", "admin", "password"]
-            interesting_param_urls = []
-            
-            for param_url in scan_data["parameters"][:50]:  # Look at first 50 params
-                for interesting in interesting_params:
-                    if interesting in param_url.lower():
-                        interesting_param_urls.append(param_url)
-                        break
-            
-            for param_url in interesting_param_urls[:10]:
-                prompt += f"- {param_url}\n"
+        # Include up to 50 site links
+        if len(scan_data.get("site_links", [])) > 0:
+            summary["site_links_sample"] = scan_data.get("site_links", [])[:50]
         
-        # Add security check information
-        if "cors_checks" in scan_data and scan_data["cors_checks"]:
-            prompt += f"\n### CORS Misconfiguration Checks ({len(scan_data['cors_checks'])} found)\n"
-            for check in scan_data["cors_checks"][:5]:  # Limit to 5 issues
-                prompt += f"- {check}\n"
+        # Include up to 20 JS files
+        if len(scan_data.get("js_files", [])) > 0:
+            summary["js_files_sample"] = scan_data.get("js_files", [])[:20]
         
-        if "host_header_checks" in scan_data and scan_data["host_header_checks"]:
-            prompt += f"\n### Host Header Injection Checks ({len(scan_data['host_header_checks'])} found)\n"
-            for check in scan_data["host_header_checks"][:5]:  # Limit to 5 issues
-                prompt += f"- {check}\n"
+        # Include CORS and host header checks
+        if len(scan_data.get("cors_checks", [])) > 0:
+            summary["cors_checks"] = scan_data.get("cors_checks", [])
         
-        # Add analysis instructions
-        prompt += f"""
-## Analysis Instructions
-
-Based on the reconnaissance data above, please provide a comprehensive security analysis focused on a bug bounty context. Structure your analysis as follows:
-
-1. **High-Value Security Issues** - Identify and prioritize 3-5 potential security issues with the highest bug bounty value. For each issue:
-   - Describe the vulnerability
-   - Estimate severity (Critical, High, Medium, Low)
-   - Describe potential impact
-   - Suggest steps to verify/exploit
-   - Provide a recommendation for fixing
-
-2. **Attack Vectors** - Identify 3-5 promising attack vectors based on the reconnaissance data.
-
-3. **Next Steps** - Recommend 3-5 specific commands or tools to further explore the identified issues.
-
-4. **Bug Bounty Strategy** - Suggest a strategy for focusing bug bounty hunting efforts on this target.
-
-5. **Recommendations** - Provide actionable security recommendations.
-
-Focus on issues that would be valuable in a bug bounty program, considering both impact and exploitability.
-"""
+        if len(scan_data.get("host_header_checks", [])) > 0:
+            summary["host_header_checks"] = scan_data.get("host_header_checks", [])
         
-        # Add focus-specific instructions
-        if focus_area == "api":
-            prompt += "\nSince you're focusing on API security, pay special attention to API endpoints, authentication mechanisms, access controls, and data validation issues."
-        elif focus_area == "web":
-            prompt += "\nSince you're focusing on web security, pay special attention to injection vulnerabilities, XSS, CSRF, authentication issues, and sensitive data exposure."
-        elif focus_area == "mobile":
-            prompt += "\nSince you're focusing on mobile security, pay special attention to API endpoints that might be used by mobile apps, authentication, and data transmission security."
-        elif focus_area == "infra":
-            prompt += "\nSince you're focusing on infrastructure security, pay special attention to open ports, service configurations, cloud misconfigurations, and network-level vulnerabilities."
+        # Build prompt
+        prompt = f"""
+        Analyze the following security scan results for {target} with a focus on {focus_area} security issues.
+        
+        SCAN SUMMARY:
+        {json.dumps(summary, indent=2)}
+        
+        Your task is to:
+        1. Identify potential security vulnerabilities in the scan data
+        2. Prioritize findings by potential impact and exploitability
+        3. Suggest attack vectors that could be explored based on the findings
+        4. Provide specific recommendations for further testing or exploitation
+        5. If relevant, suggest specific commands or payloads that could be used
+        
+        Format your response using the following structure:
+        ## Vulnerabilities
+        - [Severity] Vulnerability name: Description
+        
+        ## Attack Vectors
+        - [Priority] Attack Vector: Description
+        
+        ## Recommendations
+        - Recommendation: Description
+        
+        ## Commands
+        - Command: Description
+        """
         
         return prompt
     
@@ -2336,232 +2270,155 @@ Focus on issues that would be valuable in a bug bounty program, considering both
         Parse the AI output into structured data
         
         Args:
-            ai_output: String with AI analysis output
+            ai_output: AI response text
             
         Returns:
-            None (updates self.findings)
+            Dictionary with structured analysis results
         """
-        print(f"{Fore.CYAN}[+] Parsing AI analysis output{Style.RESET_ALL}")
+        analysis_results = {
+            "vulnerabilities": [],
+            "attack_vectors": [],
+            "recommendations": [],
+            "commands": []
+        }
         
-        # Save the raw AI output
-        self.findings["raw_ai_output"] = ai_output
+        # Parse vulnerabilities
+        vuln_pattern = r"\[(\w+)\] ([^:]+): (.+)"
+        vulnerabilities = re.findall(vuln_pattern, ai_output)
+        for severity, name, description in vulnerabilities:
+            analysis_results["vulnerabilities"].append({
+                "severity": severity,
+                "name": name,
+                "description": description.strip()
+            })
         
-        # Use regex to extract sections from the AI output
-        import re
-        
-        # Extract high-value security issues
-        security_issues_section = re.search(r'(?:High-Value Security Issues|Security Issues|Vulnerabilities)(.*?)(?:Attack Vectors|Next Steps|$)', ai_output, re.DOTALL | re.IGNORECASE)
-        if security_issues_section:
-            issues_text = security_issues_section.group(1)
-            
-            # Extract individual issues using regex patterns for numbered or bulleted lists
-            issues = re.findall(r'(?:\d+\.\s+|\*\s+|\-\s+)([^•\n]+(?:\n(?!\d+\.\s+|\*\s+|\-\s+)[^\n]+)*)', issues_text)
-            
-            for issue in issues:
-                # Try to extract severity if present
-                severity_match = re.search(r'severity[:\s-]+\s*(\w+)', issue, re.IGNORECASE)
-                severity = severity_match.group(1) if severity_match else "Unknown"
-                
-                # Add to findings
-                self.findings["vulnerabilities"].append({
-                    "description": issue.strip(),
-                    "severity": severity
+        # Parse attack vectors
+        vector_pattern = r"\[(\w+)\] ([^:]+): (.+)"
+        # Find attack vectors section
+        attack_section_match = re.search(r"## Attack Vectors\s+(.+?)(?=##|\Z)", ai_output, re.DOTALL)
+        if attack_section_match:
+            attack_section = attack_section_match.group(1)
+            attack_vectors = re.findall(vector_pattern, attack_section)
+            for priority, name, description in attack_vectors:
+                analysis_results["attack_vectors"].append({
+                    "priority": priority,
+                    "name": name,
+                    "description": description.strip()
                 })
         
-        # Extract attack vectors
-        attack_vectors_section = re.search(r'(?:Attack Vectors)(.*?)(?:Next Steps|Bug Bounty Strategy|Recommendations|$)', ai_output, re.DOTALL | re.IGNORECASE)
-        if attack_vectors_section:
-            vectors_text = attack_vectors_section.group(1)
-            vectors = re.findall(r'(?:\d+\.\s+|\*\s+|\-\s+)([^•\n]+(?:\n(?!\d+\.\s+|\*\s+|\-\s+)[^\n]+)*)', vectors_text)
-            
-            for vector in vectors:
-                self.findings["attack_vectors"].append(vector.strip())
-        
-        # Extract next steps and recommendations
-        next_steps_section = re.search(r'(?:Next Steps)(.*?)(?:Bug Bounty Strategy|Recommendations|$)', ai_output, re.DOTALL | re.IGNORECASE)
-        recommendations_section = re.search(r'(?:Recommendations)(.*?)(?:$)', ai_output, re.DOTALL | re.IGNORECASE)
-        
-        # Combine next steps and recommendations
-        recommendations_text = ""
-        if next_steps_section:
-            recommendations_text += next_steps_section.group(1)
-        if recommendations_section:
-            recommendations_text += recommendations_section.group(1)
-        
-        if recommendations_text:
-            recommendations = re.findall(r'(?:\d+\.\s+|\*\s+|\-\s+)([^•\n]+(?:\n(?!\d+\.\s+|\*\s+|\-\s+)[^\n]+)*)', recommendations_text)
-            
-            for recommendation in recommendations:
-                # Try to extract command if present in code blocks
-                command_match = re.search(r'```(.+?)```', recommendation, re.DOTALL)
-                command = command_match.group(1).strip() if command_match else None
-                
-                self.findings["recommendations"].append({
-                    "description": recommendation.strip(),
-                    "command": command
+        # Parse recommendations
+        rec_pattern = r"- ([^:]+): (.+)"
+        # Find recommendations section
+        rec_section_match = re.search(r"## Recommendations\s+(.+?)(?=##|\Z)", ai_output, re.DOTALL)
+        if rec_section_match:
+            rec_section = rec_section_match.group(1)
+            recommendations = re.findall(rec_pattern, rec_section)
+            for name, description in recommendations:
+                analysis_results["recommendations"].append({
+                    "name": name,
+                    "description": description.strip()
                 })
         
-        # Print summary of findings
-        print(f"{Fore.GREEN}[+] AI Analysis Summary:{Style.RESET_ALL}")
-        print(f"{Fore.GREEN}    - Security Issues: {len(self.findings['vulnerabilities'])}{Style.RESET_ALL}")
-        print(f"{Fore.GREEN}    - Attack Vectors: {len(self.findings['attack_vectors'])}{Style.RESET_ALL}")
-        print(f"{Fore.GREEN}    - Recommendations: {len(self.findings['recommendations'])}{Style.RESET_ALL}")
+        # Parse commands
+        cmd_pattern = r"- ([^:]+): (.+)"
+        # Find commands section
+        cmd_section_match = re.search(r"## Commands\s+(.+?)(?=##|\Z)", ai_output, re.DOTALL)
+        if cmd_section_match:
+            cmd_section = cmd_section_match.group(1)
+            commands = re.findall(cmd_pattern, cmd_section)
+            for name, description in commands:
+                analysis_results["commands"].append({
+                    "name": name,
+                    "description": description.strip()
+                })
+        
+        return analysis_results
     
     def generate_report(self, output_dir, target):
         """
-        Generate a comprehensive security report
+        Generate a markdown report with the AI analysis results
         
         Args:
             output_dir: Directory to save the report
-            target: Target domain that was scanned
+            target: Target domain
             
         Returns:
             Path to the generated report file
         """
-        if not self.findings["vulnerabilities"] and not self.findings["attack_vectors"]:
-            print(f"{Fore.YELLOW}[!] No findings to report. Skipping report generation.{Style.RESET_ALL}")
-            return None
-        
-        # Create report filename
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        report_file = os.path.join(output_dir, f"ai_security_report_{target.replace('.', '_')}_{timestamp}.md")
-        
-        print(f"{Fore.CYAN}[+] Generating report: {report_file}{Style.RESET_ALL}")
+        report_filename = f"ai_analysis_{target.replace('.', '_')}_{timestamp}.md"
+        report_path = os.path.join(output_dir, report_filename)
         
         try:
-            with open(report_file, 'w') as f:
-                # Write report header
-                f.write(f"# AI Security Analysis Report for {target}\n\n")
-                f.write(f"**Scan Date:** {self.findings['metadata']['scan_time']}\n")
-                f.write(f"**Scan Type:** {self.findings['metadata']['scan_type']}\n")
-                f.write(f"**Focus Area:** {self.findings['metadata']['focus_area']}\n\n")
+            with open(report_path, 'w') as f:
+                # Write header
+                f.write(f"# Security Analysis Report for {target}\n\n")
+                f.write(f"*Generated on: {time.strftime('%Y-%m-%d %H:%M:%S')}*\n\n")
                 
-                # Write executive summary
-                f.write("## Executive Summary\n\n")
-                f.write(f"This report presents the findings of an AI-powered security analysis of **{target}**. ")
-                f.write("The analysis identified potential security vulnerabilities, attack vectors, and provides recommendations for remediation.\n\n")
+                # Write metadata
+                f.write("## Scan Metadata\n\n")
+                f.write(f"- **Target:** {self.findings['metadata']['target']}\n")
+                f.write(f"- **Scan Time:** {self.findings['metadata']['scan_time']}\n")
+                f.write(f"- **Scan Type:** {self.findings['metadata']['scan_type']}\n")
+                f.write(f"- **Focus Area:** {self.findings['metadata']['focus_area']}\n\n")
                 
-                # Add statistics
-                f.write("### Key Statistics\n\n")
-                f.write(f"- **Security Issues:** {len(self.findings['vulnerabilities'])}\n")
-                f.write(f"- **Attack Vectors:** {len(self.findings['attack_vectors'])}\n")
-                f.write(f"- **Recommendations:** {len(self.findings['recommendations'])}\n")
-                
-                if self.findings["reconnaissance"]["subdomains"]:
-                    f.write(f"- **Subdomains:** {len(self.findings['reconnaissance']['subdomains'])}\n")
-                    
-                # Port scanning count
-                port_count = sum(len(ports) for host, ports in self.findings["reconnaissance"]["port_scan"].items())
-                f.write(f"- **Open Ports:** {port_count}\n")
-                
-                # Web endpoints
-                if "site_links" in self.findings["reconnaissance"]["web_info"]:
-                    f.write(f"- **Web Endpoints:** {len(self.findings['reconnaissance']['web_info']['site_links'])}\n\n")
-                
-                # Write security issues
-                f.write("## Security Issues\n\n")
+                # Write vulnerabilities
+                f.write("## Vulnerabilities\n\n")
                 if self.findings["vulnerabilities"]:
-                    for i, issue in enumerate(self.findings["vulnerabilities"], 1):
-                        f.write(f"### {i}. {issue['description'].split('.')[0] if '.' in issue['description'] else 'Security Issue'}\n\n")
-                        f.write(f"**Severity:** {issue['severity']}\n\n")
-                        f.write(f"{issue['description']}\n\n")
+                    for vuln in self.findings["vulnerabilities"]:
+                        f.write(f"### [{vuln['severity']}] {vuln['name']}\n\n")
+                        f.write(f"{vuln['description']}\n\n")
                 else:
-                    f.write("No high-value security issues identified.\n\n")
+                    f.write("*No vulnerabilities identified.*\n\n")
                 
                 # Write attack vectors
-                f.write("## Potential Attack Vectors\n\n")
+                f.write("## Attack Vectors\n\n")
                 if self.findings["attack_vectors"]:
-                    for i, vector in enumerate(self.findings["attack_vectors"], 1):
-                        f.write(f"### {i}. {vector.split('.')[0] if '.' in vector else 'Attack Vector'}\n\n")
-                        f.write(f"{vector}\n\n")
+                    for vector in self.findings["attack_vectors"]:
+                        f.write(f"### [{vector['priority']}] {vector['name']}\n\n")
+                        f.write(f"{vector['description']}\n\n")
                 else:
-                    f.write("No significant attack vectors identified.\n\n")
+                    f.write("*No attack vectors identified.*\n\n")
                 
                 # Write recommendations
                 f.write("## Recommendations\n\n")
                 if self.findings["recommendations"]:
-                    for i, rec in enumerate(self.findings["recommendations"], 1):
-                        f.write(f"### {i}. {rec['description'].split('.')[0] if '.' in rec['description'] else 'Recommendation'}\n\n")
+                    for rec in self.findings["recommendations"]:
+                        f.write(f"### {rec['name']}\n\n")
                         f.write(f"{rec['description']}\n\n")
-                        if rec["command"]:
-                            f.write("**Suggested Command:**\n\n")
-                            f.write(f"```bash\n{rec['command']}\n```\n\n")
                 else:
-                    f.write("No specific recommendations provided.\n\n")
+                    f.write("*No recommendations provided.*\n\n")
                 
-                # Write raw AI output
-                f.write("## Detailed AI Analysis\n\n")
-                f.write("```\n")
-                f.write(self.findings["raw_ai_output"])
-                f.write("\n```\n\n")
+                # Write stats
+                if "reconnaissance" in self.findings and self.findings["reconnaissance"]:
+                    recon = self.findings["reconnaissance"]
+                    f.write("## Reconnaissance Statistics\n\n")
+                    f.write(f"- **Subdomains:** {len(recon.get('subdomains', []))}\n")
+                    f.write(f"- **Site Links:** {len(recon.get('site_links', []))}\n")
+                    f.write(f"- **Parameters:** {len(recon.get('parameters', []))}\n")
+                    f.write(f"- **JS Files:** {len(recon.get('js_files', []))}\n")
+                    f.write(f"- **CORS Issues:** {len(recon.get('cors_checks', []))}\n")
+                    f.write(f"- **Host Header Issues:** {len(recon.get('host_header_checks', []))}\n\n")
                 
-                # Write scan data summary
-                f.write("## Reconnaissance Data Summary\n\n")
-                
-                # Subdomains
-                if self.findings["reconnaissance"]["subdomains"]:
-                    f.write("### Subdomains\n\n")
-                    for subdomain in self.findings["reconnaissance"]["subdomains"][:20]:  # Limit to 20
-                        f.write(f"- {subdomain}\n")
-                    if len(self.findings["reconnaissance"]["subdomains"]) > 20:
-                        f.write(f"- ... and {len(self.findings['reconnaissance']['subdomains']) - 20} more subdomains\n")
-                    f.write("\n")
-                
-                # Port Scan Results
-                if self.findings["reconnaissance"]["port_scan"]:
-                    f.write("### Port Scan Results\n\n")
-                    for host, ports in list(self.findings["reconnaissance"]["port_scan"].items())[:5]:  # Limit to 5 hosts
-                        f.write(f"**{host}**:\n\n")
-                        for port_info in ports[:10]:  # Limit to 10 ports per host
-                            f.write(f"- {port_info}\n")
-                        f.write("\n")
-                
-                # Web Info summary
-                if "site_links" in self.findings["reconnaissance"]["web_info"] and self.findings["reconnaissance"]["web_info"]["site_links"]:
-                    f.write("### Interesting Web Endpoints\n\n")
-                    
-                    # Find interesting endpoints
-                    interesting_patterns = ["/api", "/admin", "/login", "/auth", "/upload", "/user", "/account", "/config", "/setting"]
-                    interesting_endpoints = []
-                    
-                    for link in self.findings["reconnaissance"]["web_info"]["site_links"]:
-                        for pattern in interesting_patterns:
-                            if pattern in link:
-                                interesting_endpoints.append(link)
-                                break
-                    
-                    for endpoint in interesting_endpoints[:15]:
-                        f.write(f"- {endpoint}\n")
-                    f.write("\n")
-                
-                # Footer
-                f.write("---\n")
-                f.write("This report was automatically generated by SpyHunt AI Security Scanner.\n")
-                
-            print(f"{Fore.GREEN}[+] Report successfully generated: {report_file}{Style.RESET_ALL}")
-            return report_file
-            
+            print(f"{Fore.GREEN}[+] Report generated at {report_path}{Style.RESET_ALL}")
+            return report_path
         except Exception as e:
             print(f"{Fore.RED}[!] Error generating report: {str(e)}{Style.RESET_ALL}")
             return None
     
     def suggest_next_steps(self):
         """
-        Display suggested next steps based on the AI analysis
+        Suggest next steps based on the AI analysis
         """
-        if not self.findings["recommendations"]:
+        print(f"\n{Fore.CYAN}╔═══════════════════════════════════════════════════╗")
+        print(f"{Fore.CYAN}║ {Fore.GREEN}Suggested Next Steps {Fore.CYAN}                           ║")
+        print(f"{Fore.CYAN}╚═══════════════════════════════════════════════════╝{Style.RESET_ALL}")
+        
+        if not self.findings.get("recommendations"):
             print(f"{Fore.YELLOW}[!] No recommendations available.{Style.RESET_ALL}")
             return
         
-        print(f"\n{Fore.CYAN}[+] Suggested Next Steps:{Style.RESET_ALL}")
-        
         for i, rec in enumerate(self.findings["recommendations"], 1):
-            print(f"\n{Fore.CYAN}[{i}] {rec['description'].split('.')[0] if '.' in rec['description'] else 'Recommendation'}{Style.RESET_ALL}")
-            
-            # Extract first couple of sentences for brief description
-            description = '.'.join(rec['description'].split('.')[:2]) + '.' if '.' in rec['description'] else rec['description']
-            print(f"    {description}")
-            
-            if rec["command"]:
-                print(f"\n    {Fore.GREEN}Command to run:{Style.RESET_ALL}")
-                print(f"    {Fore.GREEN}{rec['command']}{Style.RESET_ALL}")
+            print(f"{Fore.GREEN}{i}. {rec['name']}:{Style.RESET_ALL}")
+            print(f"   {rec['description']}")
+            print()
